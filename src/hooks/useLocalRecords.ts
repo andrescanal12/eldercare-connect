@@ -1,35 +1,56 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { BeneficiaryRecord } from '@/types/beneficiary';
 
 const STORAGE_KEY = 'fimlm_beneficiary_records';
 const ENDPOINT_KEY = 'fimlm_endpoint_url';
 
+const EVENT_INFO_KEY = 'fimlm_event_info';
+
+import { EVENT_INFO as DEFAULT_EVENT_INFO, EventInfo } from '@/types/beneficiary';
+
 export function useLocalRecords() {
   const [records, setRecords] = useState<BeneficiaryRecord[]>([]);
-  const [endpointUrl, setEndpointUrlState] = useState<string>('');
+  const [endpointUrl, setEndpointUrlState] = useState<string>('https://primary-production-7d4ca.up.railway.app/webhook/b91c9c3b-431f-4b80-ab39-c6360725f8f2');
+  const [eventInfo, setEventInfoState] = useState<EventInfo>(DEFAULT_EVENT_INFO);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Cargar registros del localStorage
+  // Ref para tener siempre los records actualizados (evita stale closures)
+  const recordsRef = useRef<BeneficiaryRecord[]>([]);
   useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
+    recordsRef.current = records;
+  }, [records]);
+
+  // Cargar datos del localStorage
+  useEffect(() => {
+    const storedRecords = localStorage.getItem(STORAGE_KEY);
+    if (storedRecords) {
       try {
-        setRecords(JSON.parse(stored));
+        const parsed = JSON.parse(storedRecords);
+        setRecords(parsed);
+        recordsRef.current = parsed;
       } catch (e) {
         console.error('Error parsing stored records:', e);
       }
     }
-    
+
     const storedEndpoint = localStorage.getItem(ENDPOINT_KEY);
     if (storedEndpoint) {
       setEndpointUrlState(storedEndpoint);
     }
+
+    const storedEventInfo = localStorage.getItem(EVENT_INFO_KEY);
+    if (storedEventInfo) {
+      try {
+        setEventInfoState(JSON.parse(storedEventInfo));
+      } catch (e) {
+        console.error('Error parsing stored event info:', e);
+      }
+    }
   }, []);
 
-  // Guardar registros en localStorage
-  const saveRecords = useCallback((newRecords: BeneficiaryRecord[]) => {
+  // Guardar registros en localStorage (usa functional update)
+  const persistRecords = useCallback((newRecords: BeneficiaryRecord[]) => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(newRecords));
-    setRecords(newRecords);
   }, []);
 
   // Añadir nuevo registro
@@ -39,29 +60,47 @@ export function useLocalRecords() {
       id: crypto.randomUUID(),
       createdAt: new Date().toISOString(),
     };
-    const newRecords = [newRecord, ...records];
-    saveRecords(newRecords);
+    setRecords(prev => {
+      const updated = [newRecord, ...prev];
+      persistRecords(updated);
+      recordsRef.current = updated;
+      return updated;
+    });
     return newRecord;
-  }, [records, saveRecords]);
+  }, [persistRecords]);
 
   // Actualizar estado de un registro
   const updateRecordStatus = useCallback((id: string, status: BeneficiaryRecord['status'], serverResponse?: string) => {
-    const newRecords = records.map(r => 
-      r.id === id ? { ...r, status, serverResponse } : r
-    );
-    saveRecords(newRecords);
-  }, [records, saveRecords]);
+    setRecords(prev => {
+      const updated = prev.map(r =>
+        r.id === id ? { ...r, status, serverResponse } : r
+      );
+      persistRecords(updated);
+      recordsRef.current = updated;
+      return updated;
+    });
+  }, [persistRecords]);
 
   // Eliminar registro
   const deleteRecord = useCallback((id: string) => {
-    const newRecords = records.filter(r => r.id !== id);
-    saveRecords(newRecords);
-  }, [records, saveRecords]);
+    setRecords(prev => {
+      const updated = prev.filter(r => r.id !== id);
+      persistRecords(updated);
+      recordsRef.current = updated;
+      return updated;
+    });
+  }, [persistRecords]);
 
   // Configurar endpoint URL
   const setEndpointUrl = useCallback((url: string) => {
     localStorage.setItem(ENDPOINT_KEY, url);
     setEndpointUrlState(url);
+  }, []);
+
+  // Configurar información del evento
+  const setEventInfo = useCallback((info: EventInfo) => {
+    localStorage.setItem(EVENT_INFO_KEY, JSON.stringify(info));
+    setEventInfoState(info);
   }, []);
 
   // Enviar registro a Google Sheets
@@ -103,16 +142,30 @@ export function useLocalRecords() {
       const response = await fetch(endpointUrl, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'text/plain',
         },
-        mode: 'no-cors', // Apps Script requiere no-cors
         body: JSON.stringify(payload),
       });
 
-      // Con no-cors no podemos leer la respuesta, asumimos éxito
-      updateRecordStatus(record.id, 'sent', 'Enviado correctamente');
+      const result = await response.json();
+
+      if (result.result === 'duplicate') {
+        updateRecordStatus(record.id, 'error', result.message);
+        setIsLoading(false);
+        return { success: false, message: result.message };
+      }
+
+      if (result.result === 'success') {
+        updateRecordStatus(record.id, 'sent', 'Enviado correctamente');
+        setIsLoading(false);
+        return { success: true, message: 'Registro enviado correctamente' };
+      }
+
+      // Error genérico del servidor
+      const serverError = result.error || 'Error desconocido del servidor';
+      updateRecordStatus(record.id, 'error', serverError);
       setIsLoading(false);
-      return { success: true, message: 'Registro enviado correctamente' };
+      return { success: false, message: serverError };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
       updateRecordStatus(record.id, 'error', errorMessage);
@@ -128,13 +181,13 @@ export function useLocalRecords() {
     }
 
     try {
-      await fetch(endpointUrl, {
+      const response = await fetch(endpointUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify({ test: true, timestamp: new Date().toISOString() }),
       });
-      return { success: true, message: 'Conexión establecida (modo no-cors)' };
+      const text = await response.text();
+      return { success: true, message: 'Conexión establecida correctamente' };
     } catch (error) {
       return { success: false, message: 'Error de conexión' };
     }
@@ -145,7 +198,7 @@ export function useLocalRecords() {
     if (records.length === 0) return;
 
     const headers = [
-      'ID', 'Fecha Registro', 'Estado', 'Sexo', 'Nombre', 'Edad', 'Teléfono', 
+      'ID', 'Fecha Registro', 'Estado', 'Sexo', 'Nombre', 'Edad', 'Teléfono',
       'Domicilio', 'Documento', 'Adulto H', 'Adulto M', 'Niño 0-5', 'Niña 0-5',
       'Niño 6-18', 'Niña 6-18', '>60 Hom', '>60 Muj', 'PCD H', 'PCD M'
     ];
@@ -187,13 +240,16 @@ export function useLocalRecords() {
   return {
     records,
     endpointUrl,
+    eventInfo,
     isLoading,
     addRecord,
     updateRecordStatus,
     deleteRecord,
     setEndpointUrl,
+    setEventInfo,
     sendToGoogleSheets,
     testConnection,
     exportToCSV,
   };
 }
+

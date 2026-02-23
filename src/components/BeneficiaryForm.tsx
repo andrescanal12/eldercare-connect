@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { FamilyCountsGrid } from './FamilyCountsGrid';
 import { SignaturePad } from './SignaturePad';
-import { EVENT_INFO, FamilyCounts, BeneficiaryRecord } from '@/types/beneficiary';
+import { EventInfo, FamilyCounts, BeneficiaryRecord } from '@/types/beneficiary';
 import { useToast } from '@/hooks/use-toast';
 
 interface FormData {
@@ -59,13 +59,15 @@ interface BeneficiaryFormProps {
   onSendToSheets: (record: BeneficiaryRecord) => Promise<{ success: boolean; message: string }>;
   isLoading: boolean;
   hasEndpoint: boolean;
+  eventInfo: EventInfo;
 }
 
-export function BeneficiaryForm({ 
-  onSubmit, 
-  onSendToSheets, 
+export function BeneficiaryForm({
+  onSubmit,
+  onSendToSheets,
   isLoading,
-  hasEndpoint 
+  hasEndpoint,
+  eventInfo
 }: BeneficiaryFormProps) {
   const [formData, setFormData] = useState<FormData>(initialFormData);
   const [errors, setErrors] = useState<FormErrors>({});
@@ -112,7 +114,7 @@ export function BeneficiaryForm({
   // Crear registro
   const createRecord = useCallback((): Omit<BeneficiaryRecord, 'id' | 'createdAt'> => {
     return {
-      ...EVENT_INFO,
+      ...eventInfo,
       timestamp_envio: new Date().toISOString(),
       sexo: formData.sexo as 'H' | 'M',
       nombre_apellido: formData.nombre_apellido.trim(),
@@ -124,7 +126,8 @@ export function BeneficiaryForm({
       ...formData.familyCounts,
       status: 'pending',
     };
-  }, [formData]);
+  }, [formData, eventInfo]);
+
 
   // Resetear formulario
   const resetForm = useCallback(() => {
@@ -217,7 +220,7 @@ export function BeneficiaryForm({
       {/* Datos personales */}
       <div>
         <h3 className="section-title">Datos Personales</h3>
-        
+
         <div className="space-y-4">
           {/* Sexo */}
           <div className="space-y-2">

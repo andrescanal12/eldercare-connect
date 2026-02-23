@@ -54,9 +54,10 @@ export interface EventInfo {
 }
 
 export const EVENT_INFO: EventInfo = {
-  evento: "DÍA DEL ADULTO MAYOR – ESPAÑA",
+  evento: "DÍA DE LA MUJER - ESPAÑA",
   registro: "REGISTRO DE BENEFICIARIOS",
-  fecha_evento: "sábado 14 de febrero 2026",
-  ciudad: "Sabadell",
-  beneficios_entregados: "Kits de Aseo Personal, Mantas, Bufandas, Gorros y Meriendas"
+  fecha_evento: "lunes 23 de febrero 2026",
+  ciudad: "España",
+  beneficios_entregados: "Sorpresas, Premios, Regalos y Meriendas"
 };
+

@@ -1,8 +1,8 @@
 import { useState, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { EventBanner } from '@/components/EventBanner';
 import { BeneficiaryForm } from '@/components/BeneficiaryForm';
-import { LocalRecordsTable } from '@/components/LocalRecordsTable';
 import { SettingsModal } from '@/components/SettingsModal';
 import { useLocalRecords } from '@/hooks/useLocalRecords';
 import { useToast } from '@/hooks/use-toast';
@@ -11,17 +11,18 @@ const Index = () => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const formRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const {
     records,
     endpointUrl,
+    eventInfo,
     isLoading,
     addRecord,
-    deleteRecord,
     setEndpointUrl,
+    setEventInfo,
     sendToGoogleSheets,
     testConnection,
-    exportToCSV,
   } = useLocalRecords();
 
   // Scroll al formulario
@@ -29,37 +30,10 @@ const Index = () => {
     formRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, []);
 
-  // Ver registros (scroll a tabla)
+  // Navegar a la página de registros
   const handleViewRecords = useCallback(() => {
-    const table = document.getElementById('records-table');
-    table?.scrollIntoView({ behavior: 'smooth' });
-  }, []);
-
-  // Reintentar envío
-  const handleRetry = useCallback(async (record: any) => {
-    const result = await sendToGoogleSheets(record);
-    if (result.success) {
-      toast({
-        title: 'Registro enviado',
-        description: 'El reintento fue exitoso.',
-      });
-    } else {
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: result.message,
-      });
-    }
-  }, [sendToGoogleSheets, toast]);
-
-  // Eliminar registro
-  const handleDelete = useCallback((id: string) => {
-    deleteRecord(id);
-    toast({
-      title: 'Registro eliminado',
-      description: 'El registro ha sido eliminado.',
-    });
-  }, [deleteRecord, toast]);
+    navigate('/registros');
+  }, [navigate]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -73,6 +47,7 @@ const Index = () => {
       <EventBanner
         onViewRecords={handleViewRecords}
         recordCount={records.length}
+        eventInfo={eventInfo}
       />
 
       {/* Contenido principal */}
@@ -84,17 +59,7 @@ const Index = () => {
             onSendToSheets={sendToGoogleSheets}
             isLoading={isLoading}
             hasEndpoint={!!endpointUrl}
-          />
-        </div>
-
-        {/* Tabla de registros */}
-        <div id="records-table">
-          <LocalRecordsTable
-            records={records}
-            onRetry={handleRetry}
-            onDelete={handleDelete}
-            onExportCSV={exportToCSV}
-            isLoading={isLoading}
+            eventInfo={eventInfo}
           />
         </div>
       </main>
@@ -103,7 +68,7 @@ const Index = () => {
       <footer className="border-t border-border bg-card mt-8">
         <div className="container mx-auto px-4 py-4 text-center">
           <p className="text-xs text-muted-foreground">
-            © 2026 Fundación Internacional María Luisa de Moreno. 
+            © 2026 Fundación Internacional María Luisa de Moreno.
             Los datos recopilados se utilizan exclusivamente para la gestión del evento.
           </p>
           <p className="text-xs text-muted-foreground mt-1">
@@ -118,10 +83,13 @@ const Index = () => {
         onOpenChange={setIsSettingsOpen}
         endpointUrl={endpointUrl}
         onEndpointChange={setEndpointUrl}
+        eventInfo={eventInfo}
+        onEventInfoChange={setEventInfo}
         onTestConnection={testConnection}
       />
     </div>
   );
 };
+
 
 export default Index;

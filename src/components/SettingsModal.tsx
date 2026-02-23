@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Settings, ExternalLink, Check, X, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,11 +12,15 @@ import {
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 
+import { EventInfo } from '@/types/beneficiary';
+
 interface SettingsModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   endpointUrl: string;
   onEndpointChange: (url: string) => void;
+  eventInfo: EventInfo;
+  onEventInfoChange: (info: EventInfo) => void;
   onTestConnection: () => Promise<{ success: boolean; message: string }>;
 }
 
@@ -25,18 +29,31 @@ export function SettingsModal({
   onOpenChange,
   endpointUrl,
   onEndpointChange,
+  eventInfo,
+  onEventInfoChange,
   onTestConnection,
 }: SettingsModalProps) {
   const [url, setUrl] = useState(endpointUrl);
+  const [info, setInfo] = useState<EventInfo>(eventInfo);
   const [isTesting, setIsTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
   const { toast } = useToast();
 
+  // Actualizar estado local cuando cambian las props
+  useEffect(() => {
+    setUrl(endpointUrl);
+  }, [endpointUrl]);
+
+  useEffect(() => {
+    setInfo(eventInfo);
+  }, [eventInfo]);
+
   const handleSave = () => {
     onEndpointChange(url);
+    onEventInfoChange(info);
     toast({
       title: 'Configuración guardada',
-      description: 'La URL del endpoint ha sido actualizada.',
+      description: 'Los ajustes han sido actualizados correctamente.',
     });
   };
 
@@ -64,37 +81,82 @@ export function SettingsModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Settings className="h-5 w-5" />
             Configuración
           </DialogTitle>
           <DialogDescription>
-            Configure la conexión con Google Apps Script para enviar los registros.
+            Configure los detalles del evento y la conexión con Google Sheets.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6 py-4">
+          {/* Detalles del Evento */}
+          <div className="space-y-4 border-b border-border pb-6">
+            <h4 className="font-semibold text-sm flex items-center gap-2">
+              <ExternalLink className="h-4 w-4" />
+              Detalles del Evento
+            </h4>
+
+            <div className="space-y-2">
+              <Label htmlFor="event-name">Nombre del Evento</Label>
+              <Input
+                id="event-name"
+                value={info.evento}
+                onChange={(e) => setInfo(prev => ({ ...prev, evento: e.target.value }))}
+                placeholder="Ej: DÍA DE LA MUJER - ESPAÑA"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="event-date">Fecha del Evento</Label>
+              <Input
+                id="event-date"
+                value={info.fecha_evento}
+                onChange={(e) => setInfo(prev => ({ ...prev, fecha_evento: e.target.value }))}
+                placeholder="Ej: lunes 23 de febrero 2026"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="event-benefits">Beneficios</Label>
+              <Input
+                id="event-benefits"
+                value={info.beneficios_entregados}
+                onChange={(e) => setInfo(prev => ({ ...prev, beneficios_entregados: e.target.value }))}
+                placeholder="Ej: Sorpresas, Premios..."
+              />
+            </div>
+          </div>
+
           {/* URL del endpoint */}
-          <div className="space-y-2">
-            <Label htmlFor="endpoint-url">
-              Google Apps Script Web App URL
-            </Label>
-            <Input
-              id="endpoint-url"
-              type="url"
-              placeholder="https://script.google.com/macros/s/..."
-              value={url}
-              onChange={(e) => {
-                setUrl(e.target.value);
-                setTestResult(null);
-              }}
-              className="font-mono text-sm"
-            />
-            <p className="text-xs text-muted-foreground">
-              Esta URL se obtiene al publicar tu Google Apps Script como Web App.
-            </p>
+          <div className="space-y-4">
+            <h4 className="font-semibold text-sm flex items-center gap-2">
+              <ExternalLink className="h-4 w-4" />
+              Conexión
+            </h4>
+
+            <div className="space-y-2">
+              <Label htmlFor="endpoint-url">
+                Google Apps Script Web App URL
+              </Label>
+              <Input
+                id="endpoint-url"
+                type="url"
+                placeholder="https://script.google.com/macros/s/..."
+                value={url}
+                onChange={(e) => {
+                  setUrl(e.target.value);
+                  setTestResult(null);
+                }}
+                className="font-mono text-sm"
+              />
+              <p className="text-xs text-muted-foreground">
+                Esta URL se obtiene al publicar tu Google Apps Script como Web App.
+              </p>
+            </div>
           </div>
 
           {/* Botones de acción */}
@@ -114,21 +176,19 @@ export function SettingsModal({
             </Button>
             <Button
               onClick={handleSave}
-              disabled={!url}
               className="flex-1 btn-primary"
             >
-              Guardar URL
+              Guardar Cambios
             </Button>
           </div>
 
           {/* Resultado del test */}
           {testResult && (
             <div
-              className={`flex items-center gap-2 p-3 rounded-lg text-sm ${
-                testResult.success
-                  ? 'bg-success/10 text-success'
-                  : 'bg-destructive/10 text-destructive'
-              }`}
+              className={`flex items-center gap-2 p-3 rounded-lg text-sm ${testResult.success
+                ? 'bg-success/10 text-success'
+                : 'bg-destructive/10 text-destructive'
+                }`}
             >
               {testResult.success ? (
                 <Check className="h-4 w-4 flex-shrink-0" />
@@ -155,3 +215,4 @@ export function SettingsModal({
     </Dialog>
   );
 }
+
