@@ -51,7 +51,7 @@ const Index = () => {
       />
 
       {/* Contenido principal */}
-      <main className="container mx-auto px-4 py-6 space-y-6">
+      <main className="container mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-8">
         {/* Formulario */}
         <div ref={formRef}>
           <BeneficiaryForm

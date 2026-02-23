@@ -135,4 +135,21 @@
   .badge-pending {
     @apply badge-status bg-warning/10 text-warning;
   }
+
+  /* Premium Utilities */
+  .glass-header {
+    @apply bg-card/80 backdrop-blur-md border-b border-border transition-all duration-300;
+  }
+
+  .mesh-gradient {
+    background-color: hsla(207, 87%, 34%, 1);
+    background-image: 
+      radial-gradient(at 0% 0%, hsla(197, 73%, 51%, 0.5) 0px, transparent 50%),
+      radial-gradient(at 100% 0%, hsla(207, 87%, 27%, 0.5) 0px, transparent 50%),
+      radial-gradient(at 50% 100%, hsla(207, 87%, 34%, 0.3) 0px, transparent 50%);
+  }
+
+  .text-shadow-sm {
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  }
 }
