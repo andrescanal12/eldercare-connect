@@ -139,13 +139,23 @@ export function useLocalRecords() {
     };
 
     try {
-      const response = await fetch(endpointUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'text/plain',
-        },
-        body: JSON.stringify(payload),
-      });
+      // En producción (Vercel), usar proxy para evitar CORS
+      const isProduction = window.location.hostname !== 'localhost';
+
+      let response: Response;
+      if (isProduction) {
+        response = await fetch('/api/proxy', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ targetUrl: endpointUrl, ...payload }),
+        });
+      } else {
+        response = await fetch(endpointUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain' },
+          body: JSON.stringify(payload),
+        });
+      }
 
       const result = await response.json();
 
@@ -181,11 +191,23 @@ export function useLocalRecords() {
     }
 
     try {
-      const response = await fetch(endpointUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify({ test: true, timestamp: new Date().toISOString() }),
-      });
+      const isProduction = window.location.hostname !== 'localhost';
+      const testPayload = { test: true, timestamp: new Date().toISOString() };
+
+      let response: Response;
+      if (isProduction) {
+        response = await fetch('/api/proxy', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ targetUrl: endpointUrl, ...testPayload }),
+        });
+      } else {
+        response = await fetch(endpointUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain' },
+          body: JSON.stringify(testPayload),
+        });
+      }
       const text = await response.text();
       return { success: true, message: 'Conexión establecida correctamente' };
     } catch (error) {
