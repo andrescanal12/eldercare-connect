@@ -157,7 +157,25 @@ export function useLocalRecords() {
         });
       }
 
-      const result = await response.json();
+      const responseText = await response.text();
+      console.log('[sendToGoogleSheets] Status:', response.status, 'Response:', responseText);
+
+      if (!response.ok) {
+        const errorMsg = `Error del servidor (${response.status}): ${responseText.substring(0, 200)}`;
+        updateRecordStatus(record.id, 'error', errorMsg);
+        setIsLoading(false);
+        return { success: false, message: errorMsg };
+      }
+
+      let result: any;
+      try {
+        result = JSON.parse(responseText);
+      } catch {
+        // Si no es JSON pero la respuesta fue 2xx, asumir éxito
+        updateRecordStatus(record.id, 'sent', 'Enviado correctamente');
+        setIsLoading(false);
+        return { success: true, message: 'Registro enviado correctamente' };
+      }
 
       if (result.result === 'duplicate') {
         updateRecordStatus(record.id, 'error', result.message);
@@ -172,12 +190,13 @@ export function useLocalRecords() {
       }
 
       // Error genérico del servidor
-      const serverError = result.error || 'Error desconocido del servidor';
+      const serverError = result.error || result.message || 'Error desconocido del servidor';
       updateRecordStatus(record.id, 'error', serverError);
       setIsLoading(false);
       return { success: false, message: serverError };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+      console.error('[sendToGoogleSheets] Error:', error);
       updateRecordStatus(record.id, 'error', errorMessage);
       setIsLoading(false);
       return { success: false, message: errorMessage };
