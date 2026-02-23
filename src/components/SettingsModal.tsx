@@ -140,21 +140,18 @@ export function SettingsModal({
 
             <div className="space-y-2">
               <Label htmlFor="endpoint-url">
-                Google Apps Script Web App URL
+                Google Apps Script Web App URL 🔒
               </Label>
               <Input
                 id="endpoint-url"
                 type="url"
-                placeholder="https://script.google.com/macros/s/..."
                 value={url}
-                onChange={(e) => {
-                  setUrl(e.target.value);
-                  setTestResult(null);
-                }}
-                className="font-mono text-sm"
+                readOnly
+                disabled
+                className="font-mono text-sm bg-muted cursor-not-allowed"
               />
               <p className="text-xs text-muted-foreground">
-                Esta URL se obtiene al publicar tu Google Apps Script como Web App.
+                URL configurada de forma permanente. No se puede modificar.
               </p>
             </div>
           </div>

@@ -3,6 +3,7 @@ import { BeneficiaryRecord } from '@/types/beneficiary';
 
 const STORAGE_KEY = 'fimlm_beneficiary_records';
 const ENDPOINT_KEY = 'fimlm_endpoint_url';
+const HARDCODED_ENDPOINT = 'https://script.google.com/macros/s/AKfycbwh2FIrsV09mgLoQ62KTKLyZKtjVqGnd7ULrzVAM8bgQnGeMvL-KzTbAUDTsIu5GYwO/exec';
 
 const EVENT_INFO_KEY = 'fimlm_event_info';
 
@@ -10,7 +11,8 @@ import { EVENT_INFO as DEFAULT_EVENT_INFO, EventInfo } from '@/types/beneficiary
 
 export function useLocalRecords() {
   const [records, setRecords] = useState<BeneficiaryRecord[]>([]);
-  const [endpointUrl, setEndpointUrlState] = useState<string>('https://primary-production-7d4ca.up.railway.app/webhook/b91c9c3b-431f-4b80-ab39-c6360725f8f2');
+  // URL fija — siempre usar la de Google Apps Script
+  const [endpointUrl] = useState<string>(HARDCODED_ENDPOINT);
   const [eventInfo, setEventInfoState] = useState<EventInfo>(DEFAULT_EVENT_INFO);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -33,10 +35,8 @@ export function useLocalRecords() {
       }
     }
 
-    const storedEndpoint = localStorage.getItem(ENDPOINT_KEY);
-    if (storedEndpoint) {
-      setEndpointUrlState(storedEndpoint);
-    }
+    // Guardar la URL fija en localStorage por referencia
+    localStorage.setItem(ENDPOINT_KEY, HARDCODED_ENDPOINT);
 
     const storedEventInfo = localStorage.getItem(EVENT_INFO_KEY);
     if (storedEventInfo) {
@@ -139,23 +139,12 @@ export function useLocalRecords() {
     };
 
     try {
-      // En producción (Vercel), usar proxy para evitar CORS
-      const isProduction = window.location.hostname !== 'localhost';
-
-      let response: Response;
-      if (isProduction) {
-        response = await fetch('/api/proxy', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ targetUrl: endpointUrl, ...payload }),
-        });
-      } else {
-        response = await fetch(endpointUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain' },
-          body: JSON.stringify(payload),
-        });
-      }
+      // Google Apps Script maneja CORS nativamente — llamada directa
+      const response = await fetch(endpointUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify(payload),
+      });
 
       const responseText = await response.text();
       console.log('[sendToGoogleSheets] Status:', response.status, 'Response:', responseText);
@@ -210,23 +199,12 @@ export function useLocalRecords() {
     }
 
     try {
-      const isProduction = window.location.hostname !== 'localhost';
       const testPayload = { test: true, timestamp: new Date().toISOString() };
-
-      let response: Response;
-      if (isProduction) {
-        response = await fetch('/api/proxy', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ targetUrl: endpointUrl, ...testPayload }),
-        });
-      } else {
-        response = await fetch(endpointUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain' },
-          body: JSON.stringify(testPayload),
-        });
-      }
+      const response = await fetch(endpointUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify(testPayload),
+      });
       const text = await response.text();
       return { success: true, message: 'Conexión establecida correctamente' };
     } catch (error) {

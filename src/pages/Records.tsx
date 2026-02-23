@@ -43,6 +43,9 @@ const Records = () => {
     }, [sendToGoogleSheets, toast]);
 
     const handleDelete = useCallback((id: string) => {
+        const confirmed = window.confirm('¿Estás seguro de que deseas eliminar este registro? Esta acción no se puede deshacer.');
+        if (!confirmed) return;
+
         deleteRecord(id);
         toast({
             title: 'Registro eliminado',
